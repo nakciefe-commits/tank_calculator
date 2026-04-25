@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Tank Cascade Doldurma Hesaplayıcı</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #0f1419;
+    color: #e8eef2;
+    margin: 0;
+    padding: 24px;
+    line-height: 1.5;
+  }
+  h1 { color: #4ec9b0; margin-top: 0; }
+  h2 { color: #9cdcfe; border-bottom: 1px solid #2a3441; padding-bottom: 6px; }
+  .container { max-width: 980px; margin: 0 auto; }
+  .panel {
+    background: #1a2230;
+    border: 1px solid #2a3441;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  label { display: block; margin-bottom: 4px; font-size: 13px; color: #9cdcfe; }
+  input[type=number], select {
+    width: 100%;
+    padding: 8px 10px;
+    background: #0f1419;
+    border: 1px solid #2a3441;
+    border-radius: 4px;
+    color: #e8eef2;
+    font-size: 14px;
+  }
+  input[type=number]:focus, select:focus { outline: none; border-color: #4ec9b0; }
+  .field { margin-bottom: 12px; }
+  button {
+    background: #4ec9b0;
+    color: #0f1419;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  button:hover { background: #6edcc4; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    font-size: 13px;
+  }
+  th, td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid #2a3441;
+  }
+  th { background: #232d3d; color: #9cdcfe; font-weight: 600; }
+  tr.success td { background: rgba(78, 201, 176, 0.08); }
+  tr.fail td { color: #f48771; }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .stat {
+    background: #232d3d;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid #4ec9b0;
+  }
+  .stat .label { font-size: 11px; color: #8a96a3; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat .value { font-size: 20px; font-weight: 600; color: #e8eef2; margin-top: 2px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge.ok { background: rgba(78, 201, 176, 0.2); color: #4ec9b0; }
+  .badge.no { background: rgba(244, 135, 113, 0.2); color: #f48771; }
+  .small { font-size: 12px; color: #8a96a3; }
+  .formula {
+    font-family: 'Consolas', monospace;
+    background: #0f1419;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border-left: 3px solid #9cdcfe;
+    margin: 8px 0;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Tank Cascade Doldurma Hesaplayıcı</h1>
+  <p class="small">İdeal gaz yasası ile cascade filling: <span class="formula">P₃ = (P₁·V₁ + P₂·V₂) / (V₁ + V₂)</span></p>
+
+  <div class="panel">
+    <h2>Parametreler</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Tank hacmi (L)</label>
+        <input type="number" id="tankVolume" value="3250" step="any">
+        <div class="small">650 × 5 = 3250 L</div>
+      </div>
+      <div class="field">
+        <label>Tank başlangıç basıncı (bar)</label>
+        <input type="number" id="initialP" value="1" step="any">
+      </div>
+      <div class="field">
+        <label>Hedef basınç (bar)</label>
+        <input type="number" id="targetP" value="250" step="any">
+      </div>
+      <div class="field">
+        <label>Manifold hacmi (L)</label>
+        <input type="number" id="manifoldVolume" value="800" step="any">
+        <div class="small">16 tüp × 50 L = 800 L</div>
+      </div>
+      <div class="field">
+        <label>200 bar manifold sayısı</label>
+        <input type="number" id="count200" value="3" min="0" step="1">
+      </div>
+      <div class="field">
+        <label>300 bar manifold sayısı</label>
+        <input type="number" id="count300" value="1" min="0" step="1">
+      </div>
+      <div class="field">
+        <label>200 bar manifold fiyatı (TL)</label>
+        <input type="number" id="price200" value="4000" step="any">
+      </div>
+      <div class="field">
+        <label>300 bar manifold fiyatı (TL)</label>
+        <input type="number" id="price300" value="100000" step="any">
+      </div>
+      <div class="field">
+        <label>Gaz modeli</label>
+        <select id="gasModel">
+          <option value="ideal">İdeal Gaz</option>
+          <option value="real" disabled>Reel Gaz (yakında)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Cascade sırası</label>
+        <select id="order">
+          <option value="lowFirst">Düşük → Yüksek (200 önce, 300 sonra)</option>
+          <option value="highFirst">Yüksek → Düşük (300 önce, 200 sonra)</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="calculate()">Hesapla</button>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script>
+function cascadeStep(P_tank, V_tank, P_man, V_man) {
+  return (P_tank * V_tank + P_man * V_man) / (V_tank + V_man);
+}
+
+function calculate() {
+  const V_tank = parseFloat(document.getElementById('tankVolume').value);
+  const P0 = parseFloat(document.getElementById('initialP').value);
+  const P_target = parseFloat(document.getElementById('targetP').value);
+  const V_man = parseFloat(document.getElementById('manifoldVolume').value);
+  const n200 = parseInt(document.getElementById('count200').value) || 0;
+  const n300 = parseInt(document.getElementById('count300').value) || 0;
+  const price200 = parseFloat(document.getElementById('price200').value);
+  const price300 = parseFloat(document.getElementById('price300').value);
+  const order = document.getElementById('order').value;
+
+  const manifolds = [];
+  if (order === 'lowFirst') {
+    for (let i = 0; i < n200; i++) manifolds.push({ type: 200, P: 200 });
+    for (let i = 0; i < n300; i++) manifolds.push({ type: 300, P: 300 });
+  } else {
+    for (let i = 0; i < n300; i++) manifolds.push({ type: 300, P: 300 });
+    for (let i = 0; i < n200; i++) manifolds.push({ type: 200, P: 200 });
+  }
+
+  const totalCost = n200 * price200 + n300 * price300;
+
+  let P = P0;
+  const rows = [];
+  let reachedAt = -1;
+  let count200used = 0, count300used = 0;
+
+  for (let i = 0; i < manifolds.length; i++) {
+    const m = manifolds[i];
+    const P_before = P;
+    let warning = '';
+    if (m.P <= P_before) {
+      warning = ' (manifold basıncı tank ≤ — transfer olmaz)';
+    }
+    const P_after = cascadeStep(P_before, V_tank, m.P, V_man);
+    P = P_after;
+    if (m.type === 200) count200used++; else count300used++;
+    const reached = P_after >= P_target;
+    if (reached && reachedAt < 0) reachedAt = i + 1;
+    rows.push({
+      step: i + 1,
+      type: m.type,
+      P_before: P_before,
+      P_after: P_after,
+      reached: reached,
+      warning: warning
+    });
+  }
+
+  const finalP = P;
+  const targetReached = finalP >= P_target;
+
+  let html = '<div class="panel"><h2>Sonuç</h2>';
+  html += '<div class="summary">';
+  html += `<div class="stat"><div class="label">Toplam Maliyet</div><div class="value">${totalCost.toLocaleString('tr-TR')} TL</div></div>`;
+  html += `<div class="stat"><div class="label">Final Basınç</div><div class="value">${finalP.toFixed(2)} bar</div></div>`;
+  html += `<div class="stat"><div class="label">Hedef</div><div class="value">${P_target} bar ${targetReached ? '<span class="badge ok">Ulaşıldı</span>' : '<span class="badge no">Ulaşılamadı</span>'}</div></div>`;
+  html += `<div class="stat"><div class="label">Manifold Toplam</div><div class="value">${n200 + n300}</div><div class="small">${n200}×200bar + ${n300}×300bar</div></div>`;
+  html += '</div>';
+
+  if (reachedAt > 0) {
+    html += `<p style="margin-top:14px;">Hedef <b>${reachedAt}.</b> manifold sonrası ulaşıldı. Sonraki manifoldlar ${manifolds.length - reachedAt} adet — opsiyonel/fazlalık.</p>`;
+  } else if (!targetReached) {
+    html += `<p style="margin-top:14px;color:#f48771;">Hedefe ulaşılamadı. Eksik basınç: <b>${(P_target - finalP).toFixed(2)} bar</b>. Daha fazla 300 bar manifold eklemeyi deneyin.</p>`;
+  }
+
+  html += '<h2 style="margin-top:24px;">Adım Adım Cascade</h2>';
+  html += '<table><thead><tr><th>#</th><th>Manifold</th><th>Tank Önce (bar)</th><th>Tank Sonra (bar)</th><th>Δ (bar)</th><th>Hedef?</th></tr></thead><tbody>';
+  for (const r of rows) {
+    const cls = r.reached ? 'success' : '';
+    const delta = (r.P_after - r.P_before).toFixed(2);
+    const reachedTxt = r.reached ? '<span class="badge ok">✓</span>' : '<span class="badge no">—</span>';
+    html += `<tr class="${cls}"><td>${r.step}</td><td>${r.type} bar</td><td>${r.P_before.toFixed(2)}</td><td><b>${r.P_after.toFixed(2)}</b>${r.warning}</td><td>+${delta}</td><td>${reachedTxt}</td></tr>`;
+  }
+  html += '</tbody></table>';
+  html += '</div>';
+
+  document.getElementById('result').innerHTML = html;
+}
+
+calculate();
+</script>
+</body>
+</html>
