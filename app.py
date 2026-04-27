@@ -5,20 +5,122 @@ Tank Cascade Doldurma Hesaplayıcı — Masaüstü Uygulama
 yan yana hesaplar.
 
 Çalıştır:
-    python app.py
+    python app.py     (gerekirse eksik kütüphaneleri otomatik kurar)
 
-Bağımlılıklar:
-    pip install CoolProp scipy
+Manuel kurulum:
+    pip install -r requirements.txt
 """
 
 import sys
 import io
+import os
+import subprocess
+import importlib
+
+# ---------- Bağımlılık bootstrap ----------
+REQUIRED = [
+    # (import_name, pip_name)
+    ("CoolProp", "CoolProp"),
+    ("scipy", "scipy"),
+    ("numpy", "numpy"),
+]
+
+
+def _missing_packages():
+    missing = []
+    for mod, pkg in REQUIRED:
+        try:
+            importlib.import_module(mod)
+        except ImportError:
+            missing.append(pkg)
+    return missing
+
+
+def _ensure_dependencies():
+    """Eksik paketleri pip ile kurmayı dener; başarısızsa Tk uyarısı gösterir."""
+    missing = _missing_packages()
+    if not missing:
+        return True
+
+    msg = (f"Eksik kütüphaneler tespit edildi: {', '.join(missing)}\n"
+           f"Kuruluyor (pip install --user)...")
+    print(msg, flush=True)
+
+    # Önce pip var mı emin ol
+    try:
+        import pip  # noqa: F401
+    except ImportError:
+        try:
+            import ensurepip
+            ensurepip.bootstrap()
+        except Exception as e:
+            _show_install_error(
+                f"pip bulunamadı ve kurulamadı: {e}\n"
+                "Python'u 'pip dahil' olarak yeniden kurmanız gerekebilir."
+            )
+            return False
+
+    # Kurulum dene: önce --user, olmazsa system-wide
+    cmds = [
+        [sys.executable, "-m", "pip", "install", "--user", "--upgrade"] + missing,
+        [sys.executable, "-m", "pip", "install", "--upgrade"] + missing,
+    ]
+    last_err = None
+    for cmd in cmds:
+        try:
+            subprocess.check_call(cmd)
+            break
+        except subprocess.CalledProcessError as e:
+            last_err = e
+            continue
+    else:
+        _show_install_error(
+            f"Kütüphaneler otomatik kurulamadı.\n\n"
+            f"Lütfen elle çalıştırın:\n"
+            f"  {sys.executable} -m pip install {' '.join(missing)}\n\n"
+            f"Hata: {last_err}"
+        )
+        return False
+
+    # Yeni kurulan paketler için import path'i tazele
+    importlib.invalidate_caches()
+    still_missing = _missing_packages()
+    if still_missing:
+        _show_install_error(
+            f"Kurulum tamamlandı ama hâlâ eksik: {still_missing}\n"
+            f"Uygulamayı kapatıp yeniden açmayı deneyin."
+        )
+        return False
+    return True
+
+
+def _show_install_error(text):
+    """Konsol veya tkinter uyarısı göster."""
+    print(text, file=sys.stderr, flush=True)
+    try:
+        import tkinter as _tk
+        from tkinter import messagebox as _mb
+        root = _tk.Tk()
+        root.withdraw()
+        _mb.showerror("Bağımlılık Hatası", text)
+        root.destroy()
+    except Exception:
+        pass
+
+
+_ensure_dependencies()
+# ---------- /Bağımlılık bootstrap ----------
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 
 # Windows konsolu UTF-8
-if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if sys.stdout and sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8",
+                                       errors="replace")
+    except Exception:
+        pass
 
 try:
     import CoolProp.CoolProp as CP
